@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-
+import time
 import threading
 import socket
 import argparse
@@ -67,9 +67,10 @@ class Server(threading.Thread):
 
             # Send to all connected clients except the source client
             if connection.sockname != source:
-                dec_mes = decrypt_message(message, self.key, self.secret)
-                enc_mes = encrypt_message(dec_mes, self.key, self.secret, connection.pubkey)
-                connection.send(str(enc_mes))
+                if len(message) != 0:
+                    dec_mes = decrypt_message(message, self.key, self.secret)
+                    enc_mes = encrypt_message(dec_mes, self.key, self.secret, connection.pubkey)
+                    connection.send(str(enc_mes))
 
     def send_server_pubkey(self, sockname):
         for connection in self.connections:
@@ -77,7 +78,7 @@ class Server(threading.Thread):
                 connection.send(('#SERVER_PUBKEY#'+str(self.pkey)))
 
     def challenge_client_pubkey(self, sockname, client_pubkey):
-        random_key = generate_password(256)
+        random_key = generate_password(64)
         encrypted_challenge = encrypt_message(random_key, self.key, self.secret, client_pubkey)
         for connection in self.connections:
             if connection.sockname == sockname:
@@ -85,6 +86,7 @@ class Server(threading.Thread):
         return random_key
 
     def validate_challenge_response(self, sockname, challenge, challenge_response):
+        print(challenge_response)
         decrypt_response = decrypt_message(str(challenge_response), self.key, self.secret)
         if decrypt_response == challenge:
             for connection in self.connections:
@@ -128,13 +130,16 @@ class ServerSocket(threading.Thread):
         """
         try:
             if message.startswith('#REQUEST_KEY#'):
+                print('Sending pubkey to client...')
                 self.server.send_server_pubkey(self.sockname)
             elif message.startswith('#REQUEST_CHALLENGE#'):
+                print('Sending challenge to client...')
                 client_pubkey = message.split('#REQUEST_CHALLENGE#')[1]
                 client_pubkey, _ = pgpy.PGPKey.from_blob(client_pubkey)
                 self.pubkey = client_pubkey
                 self.challenge = self.server.challenge_client_pubkey(self.sockname, client_pubkey)
             elif message.startswith('#CHALLENGE_RESPONSE#'):
+                print('Validating response from client...')
                 challenge_response = message.split('#CHALLENGE_RESPONSE#')[1]
                 result = self.server.validate_challenge_response(self.sockname, self.challenge, challenge_response)
                 if result:
@@ -142,13 +147,11 @@ class ServerSocket(threading.Thread):
                 # prevent multiple attempts
                 else:
                     self.challenge = None
-            else:
-                self.sc.close()
-                server.remove_connection(self)
-                return
-        except:
-            self.sc.close()
-            server.remove_connection(self)
+        except Exception as e:
+            print(message)
+            print(e)
+            #self.sc.close()
+            #server.remove_connection(self)
             return
 
     def run(self):
@@ -158,10 +161,13 @@ class ServerSocket(threading.Thread):
         from the list of ServerSocket threads in the parent Server thread.
         """
         while True:
-            message = self.sc.recv(4096).decode('ascii')
-            if message and self.has_passed_challenge is False:
+            if self.has_passed_challenge is False:
+                message = self.recv_timeout(self.sc)
                 self.exchange_keys(message)
-            elif message and self.has_passed_challenge is True:
+                self.sc.setblocking(1)
+            elif self.has_passed_challenge is True:
+                message = self.recv_timeout(self.sc)
+                self.sc.setblocking(1)
                 self.server.broadcast(message, self.sockname)
             else:
                 # Client has closed the socket, exit the thread
@@ -178,6 +184,41 @@ class ServerSocket(threading.Thread):
             message (str): The message to be sent.
         """
         self.sc.sendall(message.encode('ascii'))
+
+    def recv_timeout(self, the_socket, timeout=2):
+        # make socket non blocking
+        the_socket.setblocking(0)
+
+        # total data partwise in an array
+        total_data = [];
+        data = '';
+
+        # beginning time
+        begin = time.time()
+        while 1:
+            # if you got some data, then break after timeout
+            if total_data and time.time() - begin > timeout:
+                break
+
+            # if you got no data at all, wait a little longer, twice the timeout
+            elif time.time() - begin > timeout * 2:
+                break
+
+            # recv something
+            try:
+                data = the_socket.recv(4096)
+                if data:
+                    total_data.append(data)
+                    # change the beginning time for measurement
+                    begin = time.time()
+                else:
+                    # sleep for sometime to indicate a gap
+                    time.sleep(0.1)
+            except:
+                pass
+
+        # join all parts to make final string
+        return b''.join(total_data).decode('ascii')
 
 
 def exit(server):
