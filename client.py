@@ -23,7 +23,7 @@ class Send(threading.Thread):
             message = input('{}: '.format(self.name))
             # Type 'QUIT' to leave the chatroom
             if message == 'QUIT':
-                #self.sock.sendall('Server: {} has left the chat.'.format(self.name).encode('ascii'))
+                self.sock.sendall('#EXIT#'.encode('ascii'))
                 break
 
             # Send message to server for broadcasting
@@ -103,11 +103,11 @@ class Client:
         print()
         print('Welcome, {}! Getting ready to send and receive messages...'.format(name))
         # Create send and receive threads
-        self.send = Send(self.sock, name, self.key, self.pkey, self.secret, self.server_pkey)
-        self.receive = Receive(self.sock, name, self.key, self.pkey, self.secret, self.server_pkey)
+        send = Send(self.sock, name, self.key, self.pkey, self.secret, self.server_pkey)
+        receive = Receive(self.sock, name, self.key, self.pkey, self.secret, self.server_pkey)
         # Start send and receive threads
-        self.send.start()
-        self.receive.start()
+        send.start()
+        receive.start()
         #self.sock.sendall('Server: {} has joined the chat.'.format(name).encode('ascii'))
         print("\rAll set! Leave the chatroom anytime by typing 'QUIT'\n")
         print('{}: '.format(name), end='')

@@ -63,30 +63,28 @@ class Server(threading.Thread):
             message (str): The message to broadcast.
             source (tuple): The socket address of the source client.
         """
+        print('Received broadcast {}.'.format(source))
         for connection in self.connections:
-
             # Send to all connected clients except the source client
             if connection.sockname != source:
-                if len(message) != 0:
-                    dec_mes = decrypt_message(message, self.key, self.secret)
-                    enc_mes = encrypt_message(dec_mes, self.key, self.secret, connection.pubkey)
-                    connection.send(str(enc_mes))
+                dec_mes = decrypt_message(message, self.key, self.secret)
+                enc_mes = encrypt_message(dec_mes, self.key, self.secret, connection.pubkey)
+                connection.send(str(enc_mes))
 
     def send_server_pubkey(self, sockname):
         for connection in self.connections:
             if connection.sockname == sockname:
-                connection.send(('#SERVER_PUBKEY#'+str(self.pkey)))
+                connection.send(('#SERVER_PUBKEY#' + str(self.pkey)))
 
     def challenge_client_pubkey(self, sockname, client_pubkey):
         random_key = generate_password(64)
         encrypted_challenge = encrypt_message(random_key, self.key, self.secret, client_pubkey)
         for connection in self.connections:
             if connection.sockname == sockname:
-                connection.send('#CHALLENGE#'+str(encrypted_challenge))
+                connection.send('#CHALLENGE#' + str(encrypted_challenge))
         return random_key
 
     def validate_challenge_response(self, sockname, challenge, challenge_response):
-        print(challenge_response)
         decrypt_response = decrypt_message(str(challenge_response), self.key, self.secret)
         if decrypt_response == challenge:
             for connection in self.connections:
@@ -148,10 +146,7 @@ class ServerSocket(threading.Thread):
                 else:
                     self.challenge = None
         except Exception as e:
-            print(message)
-            print(e)
-            #self.sc.close()
-            #server.remove_connection(self)
+            print('Exception occurred while exchanging keys: {}'.format(e))
             return
 
     def run(self):
@@ -161,20 +156,18 @@ class ServerSocket(threading.Thread):
         from the list of ServerSocket threads in the parent Server thread.
         """
         while True:
-            if self.has_passed_challenge is False:
-                message = self.recv_timeout(self.sc)
-                self.exchange_keys(message)
-                self.sc.setblocking(1)
-            elif self.has_passed_challenge is True:
-                message = self.recv_timeout(self.sc)
-                self.sc.setblocking(1)
-                self.server.broadcast(message, self.sockname)
-            else:
-                # Client has closed the socket, exit the thread
-                print('{} has closed the connection'.format(self.sockname))
-                self.sc.close()
-                server.remove_connection(self)
-                return
+            message = self.recv_timeout(self.sc)
+            if message:
+                if self.has_passed_challenge is False:
+                    self.exchange_keys(message)
+                elif self.has_passed_challenge:
+                    if message == '#EXIT#':
+                        print('{} has closed the connection'.format(self.sockname))
+                        self.sc.close()
+                        server.remove_connection(self)
+                        return
+                    else:
+                        self.server.broadcast(message, self.sockname)
 
     def send(self, message):
         """
@@ -216,9 +209,9 @@ class ServerSocket(threading.Thread):
                     time.sleep(0.1)
             except:
                 pass
-
-        # join all parts to make final string
-        return b''.join(total_data).decode('ascii')
+        if not len(total_data) == 0:
+            # join all parts to make final string
+            return b''.join(total_data).decode('ascii')
 
 
 def exit(server):
