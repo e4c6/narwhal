@@ -17,15 +17,15 @@ narwhal_welcome = """
                              =I78Z  II$7I=??I77?I$ZO      
                              $ZZ8$     +7$$II7I7$7$8      
     .------.                 :88I         $Z7I7I77Z8      
-    |C.--. |                                IZ77$$ZO      
+    |E.--. |                                IZ77$$ZO      
     | :/\: |                                 7Z$$$$I      
     | :\/: |                                  Z7$ZO       
-    | '--'C|                                  OZZZ7       
+    | '--'4|                                  OZZZ7       
     `------'   &  .------.                    Z$$8        
-                  |P.--. |                  :ZZ8         
+                  |C.--. |                  :ZZ8         
                   | :/\: |               88OOO8O          
                   | (__) |                8DD88Z          
-                  | '--'P|                   $8O8         
+                  | '--'6|                   $8O8         
                   `------'                     Z8Z  
 
 The quieter you become, the more you are able to hear.

@@ -53,12 +53,12 @@ class Receive(threading.Thread):
             if message:
                 msg = decrypt_message(message.decode('ascii'), self.key, self.secret)
                 print('\r{}\n{}: '.format(msg, self.name), end='')
-            else:
-                # Server has closed the socket, exit the program
-                print('\nFuck, we have lost connection to the server!')
-                print('\nQuitting...')
-                self.sock.close()
-                os._exit(0)
+            # else:
+            #     # Server has closed the socket, exit the program
+            #     print('\nFuck, we have lost connection to the server!')
+            #     print('\nQuitting...')
+            #     self.sock.close()
+            #     os._exit(0)
 
 
 class Client:
