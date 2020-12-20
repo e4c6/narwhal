@@ -1,6 +1,6 @@
 narwhal_welcome = """
 :                                                         
-  7?               NARWHAL v1                   
+  7?               NARWHAL CHAT                   
      =O?=                                                 
          ~7=          88888,                              
             =OZ?=   DDD8Z$7ZOOZ                           
@@ -27,6 +27,4 @@ narwhal_welcome = """
                   | (__) |                8DD88Z          
                   | '--'6|                   $8O8         
                   `------'                     Z8Z  
-
-The quieter you become, the more you are able to hear.
 """

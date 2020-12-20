@@ -56,7 +56,7 @@ def load_key_blob(blob):
 
 def unlock_key(key, passw):
     try:
-        with key.unlock(passw) as ukey:
+        with key.unlock(passw):
             return True
     except:
         return False

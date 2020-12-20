@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# caro_e4c6 ~2020
+# e4c6 ~2020
 import threading
 import socket
 import argparse
@@ -38,14 +38,14 @@ class Send(threading.Thread):
 
 
 class Receive(threading.Thread):
-    def __init__(self, sock, name, key, pkey, secret, server_pkey):
+    def __init__(self, sock, name, key, pkey, secret, server_pubkey):
         super().__init__()
         self.sock = sock
         self.name = name
         self.key = key
         self.pkey = pkey
         self.secret = secret
-        self.server_pkey = server_pkey
+        self.server_pkey = server_pubkey
 
     def run(self):
         while True:
@@ -67,10 +67,8 @@ class Client:
         self.port = port
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.secret = generate_password(256)
-        self.key, self.pkey = generate_key(self.secret, "client@narwhal", 365)
-        self.server_pkey = None
-        self.send = None
-        self.receive = None
+        self.key, self.pubkey = generate_key(self.secret, "client@narwhal", 365)
+        self.server_pubkey = None
 
     def exchange_keys(self):
         self.sock.connect((self.host, self.port))
@@ -80,16 +78,16 @@ class Client:
             message = self.sock.recv(4096).decode('ascii')
             if message.startswith('#SERVER_PUBKEY#'):
                 print('[+] Received public key from server...')
-                self.server_pkey = message.split('#SERVER_PUBKEY#')[1]
-                self.server_pkey, _ = pgpy.PGPKey.from_blob(self.server_pkey)
+                self.server_pubkey = message.split('#SERVER_PUBKEY#')[1]
+                self.server_pubkey, _ = pgpy.PGPKey.from_blob(self.server_pubkey)
                 print('[+] Requesting challenge from server...')
-                self.sock.sendall(('#REQUEST_CHALLENGE#'+str(self.pkey)).encode('ascii'))
+                self.sock.sendall(('#REQUEST_CHALLENGE#' + str(self.pubkey)).encode('ascii'))
             if message.startswith('#CHALLENGE#'):
                 print('[+] Received challenge from server...')
                 challenge = message.split('#CHALLENGE#')[1]
                 challenge_dec = decrypt_message(challenge, self.key, self.secret)
                 print('[+] Successfully decrypted challenge...')
-                encrypt_challenge_response = encrypt_message(challenge_dec, self.key, self.secret, self.server_pkey)
+                encrypt_challenge_response = encrypt_message(challenge_dec, self.key, self.secret, self.server_pubkey)
                 print('[+] Sending challenge solution to server...')
                 self.sock.sendall(('#CHALLENGE_RESPONSE#'+str(encrypt_challenge_response)).encode('ascii'))
             if message.startswith('#WELL DONE#'):
@@ -103,12 +101,11 @@ class Client:
         print()
         print('Welcome, {}! Getting ready to send and receive messages...'.format(name))
         # Create send and receive threads
-        send = Send(self.sock, name, self.key, self.pkey, self.secret, self.server_pkey)
-        receive = Receive(self.sock, name, self.key, self.pkey, self.secret, self.server_pkey)
+        send = Send(self.sock, name, self.key, self.pubkey, self.secret, self.server_pubkey)
+        receive = Receive(self.sock, name, self.key, self.pubkey, self.secret, self.server_pubkey)
         # Start send and receive threads
         send.start()
         receive.start()
-        #self.sock.sendall('Server: {} has joined the chat.'.format(name).encode('ascii'))
         print("\rAll set! Leave the chatroom anytime by typing 'QUIT'\n")
         print('{}: '.format(name), end='')
 
