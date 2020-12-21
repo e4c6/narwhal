@@ -167,6 +167,7 @@ class ServerSocket(threading.Thread):
                         server.remove_connection(self)
                         return
                     else:
+                        print(message)
                         self.server.broadcast(message, self.sockname)
 
     def send(self, message):
